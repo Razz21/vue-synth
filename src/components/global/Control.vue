@@ -92,7 +92,9 @@
             {{ knob.label }}
           </div>
         </div> -->
-        <knob bipolar></knob>
+        <knob :knob="knobData" v-model="value"></knob>
+
+        <p>{{ value.toFixed(1) }}</p>
       </div>
     </div>
   </div>
@@ -102,7 +104,6 @@
 export default {
   data() {
     return {
-      colorArray: ["#23CDE8", "#23F376", "#FFFB43", "#FA9C34", "#21CD92", "#ED31A2", "#E22"],
       effects: [
         {
           id: 0,
@@ -267,7 +268,18 @@ export default {
           // Knob method to update parameters based on the know rotation
           // selectedKnob.method(selectedKnob.rotation, selectedKnob.modifier);
         }
-      }
+      },
+      knobData: {
+        id: 0,
+        label: "Test Knob",
+        rotation: 0,
+        color: "#FA9C34",
+        active: true,
+        selected: false,
+        style: 1
+      },
+      options: [{ label: "one" }, { label: "two" }, { label: "three" }, { label: "four" }],
+      value: 10
     };
   },
   methods: {
