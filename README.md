@@ -3,7 +3,7 @@
 Subtractive polyphonic synthesizer build with Tone.js and Vue.js.
 ---
 
-Reccomended browsers: Firefox | Chrome
+Recommended browsers: Firefox | Chrome
 
 # Table of content <!-- omit in toc -->
 - [1. Project setup](#1-project-setup)
