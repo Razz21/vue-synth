@@ -450,22 +450,3 @@ Due to static and rigid nature of components relationships, I have decided to dr
   [scope]: ../media/scope.png?raw=true
   [fx]: ../media/fx.png?raw=true
   [decayeg]: ../media/decayeg.png?raw=true
-
-
-<style>
-h1{
-  margin-top:2rem
-}
-h2{
-  margin-top:1.5rem
-}
-h3{
-  margin-top:1rem
-}
-
-img{
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-}
-</style>
