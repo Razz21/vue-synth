@@ -1,17 +1,35 @@
+/**
+ * Clamp value between an upper and lower bound.
+ * @param {number} x input value
+ * @param {number} min mininum value
+ * @param {number} max maximum allowed value
+ */
 export function clamp(x, min, max) {
   return Math.min(Math.max(x, min), max);
 }
-export function clamp1(x, min, max) {
-  if (x <= min) return min;
-  if (x >= max) return max;
-  return x;
-}
 
+/**
+ * Map a value (x) from one range onto another
+ * @param {number} x input value
+ * @param {number} inMin input range min
+ * @param {number} inMax input range max
+ * @param {number} outMin output range min
+ * @param {number} outMax output range max
+ * @returns {number} value scaled linearly onto new range
+ */
 export function scale(x, inMin, inMax, outMin, outMax) {
-  // map a value (x) from one range (in minValue/maxValue) onto another (out minValue/maxValue)
   return ((x - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin;
 }
 
+/**
+ * Convert polar coordinates to Cartesian
+ * // https://en.wikipedia.org/wiki/Polar_coordinate_system#Converting_between_polar_and_Cartesian_coordinates
+ * @param {number} centerX x center coordinate
+ * @param {number} centerY y center coordinate
+ * @param {number} radius radius value
+ * @param {number} angleInDegrees arc angle in degrees
+ * @returns {object} Cartesian coordinates
+ */
 export function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
   var angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
 
@@ -41,94 +59,83 @@ export function debounce(func, wait = 100) {
     }, wait);
   };
 }
-export function throttle(func, timeFrame) {
-  var lastTime = 0;
-  return function(...args) {
+/**
+ * Underscore.js like implementation of throttle function \
+ * source: https://stackoverflow.com/a/27078401
+ * @param {function} func - callback function
+ * @param {number} wait - interval time between function execution calls
+ * @param {Object|undefined} options - additional options (optional)
+ * @param {boolean} [options.leading=true] - disable [=false] execution on the leading edge
+ * @param {boolean} [options.trailing=true] - disable [=false] execution on the trailing edge
+ * @description Returns a function, that, when invoked, will only be triggered at most once
+ * during a given window of time. Normally, the throttled function will run
+ * as much as it can, without ever going more than once per `wait` duration;
+ * but if you'd like to disable the execution on the leading edge, pass
+ * `{leading: false}`. To disable execution on the trailing edge, ditto.
+ */
+export function throttle(func, wait, options) {
+  var context, args, result;
+  var timeout = null;
+  var previous = 0;
+  if (!options) options = {};
+  var later = function() {
+    previous = options.leading === false ? 0 : Date.now();
+    timeout = null;
+    result = func.apply(context, args);
+    if (!timeout) context = args = null;
+  };
+  return function() {
     var now = Date.now();
-    if (now - lastTime >= timeFrame) {
-      func(...args);
-      lastTime = now;
+    if (!previous && options.leading === false) previous = now;
+    var remaining = wait - (now - previous);
+    context = this;
+    args = arguments;
+    if (remaining <= 0 || remaining > wait) {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+      previous = now;
+      result = func.apply(context, args);
+      if (!timeout) context = args = null;
+    } else if (!timeout && options.trailing !== false) {
+      timeout = setTimeout(later, remaining);
     }
+    return result;
   };
 }
 
-export function roundToNearest(num, val) {
-  return Math.round(num / val) * val;
+/**
+ * Round input to closest step multiple value
+ * @param {number} num input value
+ * @param {number} step step value
+ */
+export function roundToNearest(num, step) {
+  return Math.round(num / step) * step;
 }
 
+/**
+ * Generate random number (float) in given range
+ * @param {number} min min range value (inc)
+ * @param {number} max max range value (inc)
+ */
 export function random(min, max) {
   return Math.random() * (max - min) + min;
-}
-
-export function getPropertyFromItem(item, property, fallback) {
-  if (property == null) return item === undefined ? fallback : item;
-
-  if (item !== Object(item)) return fallback === undefined ? item : fallback;
-
-  if (typeof property === "string") return item[property];
-
-  const value = property(item, fallback);
-
-  return typeof value === "undefined" ? fallback : value;
-}
-
-export class ScaleRange {
-  /**
-   * Convert linear scale input to logarythmic output
-   @method linearToLog
-   @param value {Number}
-   @param minVal {Number}
-   @param maxVal {Number}
-   @param minPos {Number}
-   @param maxPos {Number}
-   */
-
-  static linearToLog(value, minVal, maxVal, minPos = 0, maxPos = 100) {
-    minVal = Math.log(minVal || 0.001); // > 0
-    maxVal = Math.log(maxVal);
-    const scale = (maxVal - minVal) / maxPos - minPos;
-    return Math.exp((value - minPos) * scale + minVal);
-  }
-
-  /**
-   * Convert logarythmic scale input to linear output
-   @method logToLinear
-   @param value {Number}
-   @param minVal {Number}
-   @param maxVal {Number}
-   @param minPos {Number}
-   @param maxPos {Number}
-   */
-  static logToLinear(value, minVal, maxVal, minPos = 0, maxPos = 100) {
-    if (value === 0) return 0;
-    const scale = (maxVal - minVal) / maxPos - minPos;
-    return minPos + (Math.log(value) - minVal) / scale;
-  }
-  /**
-  * Scale linear input to linear output in different range
-  *
-   @param value {Number}
-   @param minIn {Number}
-   @param maxIn {Number}
-   @param minOut {Number}
-   @param maxOut {Number}
-   */
-  scaleLinear(value, minIn, maxIn, minOut, maxOut) {
-    return scale(value, minIn, maxIn, minOut, maxOut);
-  }
 }
 
 /**
  * Create enum-like object with auto-increment values
  *
  * @param {Array} values array of keys of enum object
- * @param {Number} min minimum index value
+ * @param {Boolean} asValue use array item as enum value
+ * @returns {Object} freezed object
  */
-export function createEnum(values) {
+export function createEnum(values, asValue) {
   let res = {};
   for (let i = 0; i < values.length; i++) {
-    res[values[i]] = i; //add the property
+    const value = asValue ? values[i] : i; // use array item or idx as value
+    res[values[i]] = value; // add property
   }
-  Object.freeze(res); //optional to make immutable
+  Object.freeze(res); // make immutable
   return res;
 }

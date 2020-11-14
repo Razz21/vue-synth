@@ -1,0 +1,10 @@
+$primary-control: #f08f20;
+// $primary: rgb(35, 243, 118);
+// $primary: #00e7ff;
+$primary: #ff0080;
+
+// https://til.hashrocket.com/posts/sxbrscjuqu-share-scss-variables-with-javascript
+:export {
+  primary: $primary;
+  control: $primary-control;
+}

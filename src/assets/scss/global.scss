@@ -1,0 +1,12 @@
+@import "variables";
+@import "fonts";
+
+// override built-it min method to handle different units
+@function min($numbers...) {
+  @return m#{i}n(#{$numbers});
+}
+
+// override built-it min method to handle different units
+@function max($numbers...) {
+  @return m#{a}x(#{$numbers});
+}

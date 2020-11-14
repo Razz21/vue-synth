@@ -1,13 +1,12 @@
 import Vue from "vue";
 import App from "./App.vue";
-import store from "./store";
 
 /*
 ===========================
 >>> Globally register all components from 'src/components/global' directory
 ===========================
 */
-const files = require.context("@/components/global", false, /\.vue$/i);
+const files = require.context("@/components/global", true, /\.vue$/i);
 
 files.keys().map(key => {
   Vue.component(
@@ -25,7 +24,8 @@ files.keys().map(key => {
 
 Vue.config.productionTip = false;
 
+Vue.prototype.$bus = new Vue();
+
 new Vue({
-  store,
   render: h => h(App)
 }).$mount("#app");

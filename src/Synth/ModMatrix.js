@@ -1,81 +1,184 @@
-import {
-  bipolarToUnipolar,
-  unipolarToBipolar,
-  SOURCES,
-  DESTINATIONS,
-  TRANSFORMS
-} from "./synthfunctions";
-
-import { ToneAudioNode, Scale, ScaleExp, Multiply, optionsFromArguments } from "tone";
+import { SOURCES, DESTINATIONS } from "./synthfunctions";
+import { ToneAudioNode, Multiply, optionsFromArguments } from "tone";
+import { Command, MatrixCommand } from "@/Synth/commands";
 
 /*
 ===========================================
-===========================================
 */
 
-class MatrixRow extends ToneAudioNode {
+export class Modulator extends ToneAudioNode {
   constructor() {
-    const options = optionsFromArguments(MatrixRow.getDefaults(), arguments);
-    super(options);
-    // this._sourceMin = options.sourceMin;
-    // this._sourceMax = options.sourceMax;
-    this._sourceIndex = options.sourceIndex;
-    this._destinationIndex = options.destinationIndex;
-    // for GUI -> control
-    this._controlValue = options.controlValue;
-    // -1.0 - 1.0 or 0 - 1.0 range --> bi-/unipolar
-    this._modIntensity = options.modIntensity;
-    // destination values range
-    this._modRange = options.modRange;
-    // transform on Source
-    this._sourceTransform = options.sourceTransform;
-    // to easily turn on/off a modulation routing
-    this._enable = options.enable;
-
-    // this._scale = this.input = new Scale({ min: this._sourceMin, max: this._sourceMax });
-    // multiply source
-    this.input = new Multiply({
-      context: this.context,
-      value: this._modRange
+    super(optionsFromArguments(Modulator.getDefaults(), arguments));
+    const options = optionsFromArguments(Modulator.getDefaults(), arguments);
+    this._source = options.source;
+    this._destination = options.destination;
+    this.signalNode = this.input = this.output = new Multiply({
+      value: options.amount,
+      type: options.type,
+      context: this.context
     });
-    this._mult = this.output = new Multiply({ context: this.context, value: this.modIntensity });
-
-    this.input.connect(this.output);
-    // this.init();
   }
 
-  init() {
-    switch (this.sourceTransform) {
-      case TRANSFORMS.BIPOLAR_TO_UNIPOLAR: {
-        this.scale = new Scale();
-      }
-      case TRANSFORMS.UNIPOLAR_TO_BIPOLAR: {
-        this.scale = new ScaleExp();
-      }
+  static getDefaults() {
+    return Object.assign(ToneAudioNode.getDefaults(), {
+      source: null,
+      destination: null,
+      type: "audiorange",
+      amount: 0
+    });
+  }
+
+  get amount() {
+    return this.signalNode.factor.value;
+  }
+
+  set amount(val) {
+    this.signalNode.factor.value = val;
+  }
+
+  /*
+  control source node
+  */
+  setSource(node) {
+    if (this._source === node) return;
+    if (this._source) {
+      this._source.disconnect(this.signalNode);
+      this._source = null;
+    }
+    if (node) {
+      this._source = node;
+      this._source.connect(this.signalNode);
     }
   }
 
-  get modIntensity() {
-    return this._modIntensity;
+  /*
+  control destination node
+  */
+  setDestination(node) {
+    if (this._destination === node) return;
+    this.signalNode.disconnect();
+    if (node) {
+      this._destination = node;
+      this.signalNode.connect(this._destination);
+    }
+  }
+  get source() {
+    return this._source;
   }
 
-  set modIntensity(value) {
-    this.output.value = value;
-    this._modIntensity = value;
+  set source(node) {
+    if (this._source === node) return;
+    if (this._source) {
+      this._source.disconnect(this.signalNode);
+      this._source = null;
+    }
+    if (node) {
+      this._source = node;
+      this._source.connect(this.signalNode);
+    }
   }
 
-  get sourceIndex() {
-    return this._sourceIndex;
-  }
-  set sourceIndex(value) {
-    this._sourceIndex = value;
+  get destination() {
+    return this._destination;
   }
 
-  get destinationIndex() {
-    return this._destinationIndex;
+  set destination(node) {
+    if (this._destination === node) return;
+    this.signalNode.disconnect();
+    if (node) {
+      this._destination = node;
+      this.signalNode.connect(this._destination);
+    }
   }
-  set destinationIndex(value) {
-    this._destinationIndex = value;
+
+  dispose() {
+    super.dispose();
+    this.source && this.source.disconnect(this.signalNode);
+    this.signalNode.disconnect();
+    this.signalNode.dispose();
+    this.source = null;
+    this.destination = null;
+  }
+}
+
+export class MatrixRow {
+  constructor() {
+    const options = optionsFromArguments(MatrixRow.getDefaults(), arguments);
+
+    this._id = options.id;
+    this._source = options.source;
+    this._destination = options.destination;
+    // for GUI -> control
+    this._amount = options.amount;
+    this._command = null;
+  }
+
+  static getDefaults() {
+    return { source: 0, destination: 0, value: 0 };
+  }
+
+  setCommand(command) {
+    if (command instanceof Command) {
+      this._command = command;
+    }
+  }
+
+  set(values) {
+    if (Array.isArray(values)) {
+      this.source = values[0] || 0;
+      this.destination = values[1] || 0;
+      this.amount = values[2] || 0;
+    }
+  }
+
+  getValues() {
+    return [this.source, this.destination, this.value];
+  }
+
+  execute(options) {
+    if (!this._command) return;
+    this._command.execute({ id: this.id, ...options });
+  }
+
+  get amount() {
+    return this._amount;
+  }
+
+  set amount(amount) {
+    this._amount = amount;
+    this.execute({ value });
+  }
+
+  get id() {
+    return this._id;
+  }
+
+  get source() {
+    return this._source;
+  }
+
+  set source(source) {
+    if (this.source !== source) {
+      this._source = source;
+      this.execute({ source });
+    }
+  }
+
+  get destination() {
+    return this._destination;
+  }
+
+  set destination(destination) {
+    if (this.destination !== destination) {
+      this._destination = destination;
+      this.execute({ destination });
+    }
+  }
+
+  dispose() {
+    this.source = 0;
+    this.destination = 0;
+    this.value = 0;
   }
 }
 
@@ -87,93 +190,73 @@ export class ModMatrix {
     this.matrixCore = null;
     this.sources = new Array(SOURCES.MAX_SOURCES);
     this.destinations = new Array(DESTINATIONS.MAX_DESTINATIONS);
-    this.createMatrixCore();
+    this.modulators = null;
   }
+
   /**
    * initialize matrix with empty modulation slots
    *
    * @param {ModMatrix} modMatrix
    * @returns {void}
    */
-  initializeModMatrix(modMatrix) {
-    // return;
-    let row;
 
+  initializeModMatrix(modMatrix, context) {
+    // const command = new MatrixCommand(context);
+    // for (let i = 0; i < this._slots; i++) {
+    //   const row = new MatrixRow({ id: i });
+    //   row.setCommand(command);
+    //   modMatrix.addModMatrixRow(row, i);
+    // }
+  }
+
+  initializeModulators() {
+    this.modulators = new Array(this._slots);
     for (let i = 0; i < this._slots; i++) {
-      row = new MatrixRow({
-        sourceIndex: SOURCES.SOURCE_NONE,
-        destinationIndex: DESTINATIONS.DEST_NONE,
-        controlValue: 0,
-        modIntensity: 1,
-        modRange: 200,
-        sourceTransform: TRANSFORMS.NONE,
-        enable: true
-      });
-
-      modMatrix.addModMatrixRow(row, i);
+      this.modulators[i] = new Modulator();
     }
   }
 
-  _prepareSlot(rowIdx) {
-    const modRow = this.matrixCore[rowIdx];
-    if (!modRow) return;
-    const source = this.sources[modRow.sourceIndex];
-    const destination = this.destinations[modRow.destinationIndex];
-
-    if (source) {
-      // source.disconnect();
-      source.connect(modRow);
-    }
-    if (destination) {
-      // modRow.disconnect();
-      modRow.connect(destination);
-    }
+  setRows(matrix, rows) {
+    if (!matrix.matrixCore || !Array.isArray(rows)) return;
+    matrix.matrixCore.map(row => {
+      row.set(rows[i]);
+    });
   }
 
-  connectSlots() {
-    if (!this.matrixCore) return;
-    for (let i = 0; i < this._slots; i++) {
-      this._prepareSlot(i);
-    }
+  getRows() {
+    if (!this.matrixCore) return [];
+    return this.matrixCore.reduce((acc, row) => {
+      const values = row.getValues();
+      acc.push(values);
+      return acc;
+    }, []);
   }
 
-  updateModMatrix(rowIdx, type, value) {
-    if (!this.matrixCore) return;
-    const row = this.matrixCore[rowIdx];
-    // console.log(rowIdx, type, value, row);
-    if (!row) return;
+  set({ id, value }) {
+    if (!this.modulators) return;
+    const mod = this.modulators[id];
+    if (!mod) return;
+    const source = this.sources[value[0]],
+      destination = this.destinations[value[1]],
+      amount = value[2];
 
-    if (type === "source") {
-      this._updateSource(row, value);
-    } else if (type === "destination") {
-      this._updateDestination(row, value);
-    }
+    mod.source = source;
+    mod.destination = destination;
+    mod.amount = amount;
   }
 
-  _updateSource(row, sourceIdx) {
-    const currentSource = this.sources[row.sourceIndex];
-    if (currentSource) {
-      console.log(currentSource, row);
-      currentSource.disconnect(row);
-    }
-    const source = this.sources[sourceIdx];
-    if (source) {
-      source.connect(row);
-      row.sourceIndex = sourceIdx;
-    }
+  _setSource(mod, idx) {
+    const source = this.sources[idx];
+    mod.setSource(source);
   }
 
-  _updateDestination(row, destinationIdx) {
-    console.log(row.destinationIndex, destinationIdx);
-    const currentDestination = this.destinations[row.destinationIndex];
-    if (currentDestination) {
-      row.disconnect(currentDestination);
-    }
-    const destination = this.destinations[destinationIdx];
-    if (destination) {
-      row.connect(destination);
-      row.destinationIndex = destinationIdx;
-    }
+  _setDestination(mod, idx) {
+    const destination = this.destinations[idx];
+    mod.setDestination(destination);
+  }
+
+  _setValue(mod, value) {
+    mod.value = value;
   }
 
   getMatrixCore() {
@@ -197,45 +280,22 @@ export class ModMatrix {
 
   clearMatrix() {
     if (!this.matrixCore) return;
-    for (let i = 0; i < this.matrixCore.length; i++) {
+    let i;
+    for (i = this.matrixCore.length; i--; ) {
       this.matrixCore[i] = null;
     }
-    // clear regular array, not work, if object is sealed
-    // this.matrixCore.splice(0, this.matrixCore.length);
   }
 
   addModMatrixRow(row, idx) {
     if (!this.matrixCore) {
-      this.createModMatrixCore();
+      this.createMatrixCore();
     }
-    if (!this.matrixRowExists(row.sourceIndex, row.destinationIndex)) {
-      this.matrixCore[idx] = row;
-      this.size++;
-    }
-  }
-
-  matrixRowExists(sourceIndex, destinationIndex) {
-    if (!this.matrixCore) return false;
-    // Note: skip, if initialize slots or connect just source or destination
-    if (sourceIndex === SOURCES.SOURCE_NONE || destinationIndex === DESTINATIONS.DEST_NONE)
-      return false;
-
-    for (let i = 0; i < this.size; i++) {
-      const row = this.matrixCore[i];
-
-      if (row.sourceIndex === sourceIndex && row.destinationIndex === destinationIndex) {
-        return true;
-      }
-    }
-    return false;
+    this.matrixCore[idx] = row;
+    this.size++;
   }
 
   createMatrixCore() {
     // create fixed length array
-    // this.matrixCore = Object.seal(new Array(SOURCES.MAX_SOURCES * DESTINATIONS.MAX_DESTINATIONS));
-    // this.matrixCore = Object.seal(
-    //   new Array(SOURCES.MAX_SOURCES * DESTINATIONS.MAX_DESTINATIONS).fill(null)
-    // );
     this.matrixCore = Object.seal(new Array(this._slots).fill(null));
   }
 
@@ -244,43 +304,20 @@ export class ModMatrix {
     this.size = 0;
   }
 
-  enableModMatrixRow(sourceIndex, destinationIndex, enable) {
-    if (!this.matrixCore) return;
-    for (let i = 0; i < this.size; i++) {
-      const row = this.matrixCore[i];
-      if (row.sourceIndex === sourceIndex && row.destinationIndex === destinationIndex) {
-        row.enable = enable;
-        return true;
-      }
+  deleteModulators() {
+    if (!this.modulators) return;
+    for (let i = 0; i < this.modulators.length; i++) {
+      const modulator = this.modulators[i];
+      modulator.dispose();
     }
-    return false;
+    this.modulators = null;
   }
 
-  doModulation() {
-    if (!this.matrixCore) return;
-    this.clearDestinations();
-    for (let i = 0; i < this.size; i++) {
-      const row = this.matrixCore[i];
-      if (!row) continue;
-      if (!row.enable) continue;
+  dispose() {
+    this.deleteModulators();
+    this.deleteModMatrix();
 
-      let source = this.sources[row.sourceIndex];
-
-      switch (row.sourceTransform) {
-        case TRANSFORMS.UNIPOLAR_TO_BIPOLAR:
-          source = unipolarToBipolar(source);
-          break;
-        case TRANSFORMS.BIPOLAR_TO_UNIPOLAR:
-          source = bipolarToUnipolar(source);
-          break;
-        default:
-          break;
-      }
-      const modValue = source * row.modIntensity * row.modRange;
-
-      // TODO GLOBAL VALUES, E.G. ALL OSCILLATORS/ ALL FILTERS
-
-      this.destinations[row.destinationIndex] += modValue;
-    }
+    this.sources = null;
+    this.destinations = null;
   }
 }
