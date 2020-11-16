@@ -390,12 +390,12 @@ This section explains (in short) technical differences, one section by one, betw
 ## 5.3. Envelope
  - custom shape for decay curve - build in exponential curve sounds great with short decay values, its sharp and snappy, but used algorithm is - IMHO - *too* sharp. Enlarging decay value does not provide significant change in sound amplitude, signal fade very fast and reach sustain level very quickly. Project implementation use exponential function to shape linear curve in range [1, 0] slope which is next eased to fit dedicated range using this formula:
 
-$$g\left(x,l,u\right)=f\left(\frac{x-l}{u-l}\right)\left(u-l\right)+l$$
+<img src="https://latex.codecogs.com/svg.latex?g(x,l,u)&space;=&space;f(\frac{x-l}{u-l})(u-l)&space;&plus;&space;l" title="g(x,l,u) = f(\frac{x-l}{u-l})(u-l) + l" />
 
 where:  
-$x$ - signal value,  
-$u$ - upper signal value ($1$)  
-$l$ - lower signal value (which is *sustain* value in range [$0$, $1$])
+x - signal value,  
+u - upper signal value (1),  
+l - lower signal value (which is *sustain* value in range [0, 1])
 
 ![decayeg][decayeg]
 *Custom envelope shape in comparison to build-in Tone.js Envelope with exponential decay curve. Settings values: decay time=1.5s, sustain=0.5, hold time=2s*.  
